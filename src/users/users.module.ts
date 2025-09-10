@@ -9,6 +9,9 @@ import { UsersService } from './users.service';
   imports: [TypeOrmModule.forFeature([UserEntity])],
   controllers: [UsersController],
   providers: [UsersService],
+  // ESTA LINHA É CRUCIAL !!
+  // Ela torna o UsersService "público" para que outros módulos 
+  // que importarem o UserModule possam injetá-lo.
   exports: [UsersService],
 })
 export class UsersModule {}              
