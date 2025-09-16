@@ -1,13 +1,11 @@
-// src/products/products.service.ts
-
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProductEntity } from './entities/product.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { PaginationResponseDto } from '../common/dto/pagination-response.dto';
 
-// 1. Defina uma interface para as opções de paginação
 interface FindAllOptions {
   page: number;
   limit: number;
@@ -20,6 +18,9 @@ export class ProductsService {
     private readonly productRepository: Repository<ProductEntity>,
   ) {}
 
+  /**
+   * Cria um novo produto e o associa a um usuário.
+   */
   async create(createProductDto: CreateProductDto, userId: number): Promise<ProductEntity> {
     const newProduct = this.productRepository.create({
       ...createProductDto,
@@ -29,25 +30,41 @@ export class ProductsService {
   }
 
   /**
-   * CORREÇÃO APLICADA AQUI:
-   * O método agora aceita um objeto 'options' que contém 'page' e 'limit'.
-   * A lógica para calcular 'skip' e usar 'take' foi adicionada.
+   * Busca e retorna uma lista paginada de produtos.
+   * A opção `relations: ['user']` é crucial aqui para garantir que os dados do usuário
+   * associado a cada produto sejam carregados e retornados na resposta da API.
    */
-  async findAll(options: FindAllOptions): Promise<ProductEntity[]> {
+  async findAll(options: FindAllOptions): Promise<PaginationResponseDto<ProductEntity>> {
     const { page, limit } = options;
-    const skip = (page - 1) * limit; // Calcula quantos itens pular
+    const skip = (page - 1) * limit;
 
-    return await this.productRepository.find({
-      skip: skip,
+    const [data, total] = await this.productRepository.findAndCount({
+      skip,
       take: limit,
-      relations: ['user'], // Garante que a informação do usuário seja carregada junto
+      relations: ['user'], // <-- CORREÇÃO APLICADA AQUI
+      order: {
+        createdAt: 'DESC',
+      },
     });
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
+  /**
+   * Busca um único produto pelo seu ID.
+   * A opção `relations: ['user']` também é essencial aqui para carregar
+   * os dados do usuário dono do produto.
+   */
   async findOne(id: number): Promise<ProductEntity> {
     const product = await this.productRepository.findOne({
       where: { id },
-      relations: ['user'],
+      relations: ['user'], // <-- CORREÇÃO APLICADA AQUI
     });
 
     if (!product) {
@@ -56,9 +73,12 @@ export class ProductsService {
     return product;
   }
 
+  /**
+   * Atualiza os dados de um produto existente.
+   */
   async update(id: number, updateProductDto: UpdateProductDto): Promise<ProductEntity> {
     const product = await this.productRepository.preload({
-      id: id,
+      id,
       ...updateProductDto,
     });
     if (!product) {
@@ -67,6 +87,9 @@ export class ProductsService {
     return await this.productRepository.save(product);
   }
 
+  /**
+   * Remove um produto do banco de dados pelo seu ID.
+   */
   async remove(id: number): Promise<void> {
     const product = await this.findOne(id);
     await this.productRepository.remove(product);

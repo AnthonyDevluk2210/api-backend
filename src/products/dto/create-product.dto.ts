@@ -7,7 +7,7 @@ export class CreateProductDto {
     name: string;
 
     @IsNumber()
-    @Min(10) // Preço não pode ser negativo
+    @Min(0) // Preço não pode ser negativo
     price: number;
 }
 

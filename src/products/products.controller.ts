@@ -10,6 +10,7 @@ import { Role } from '../common/enum/role.enum';
 import { RolesGuard } from '../auth/decorators/roles.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import type { UserPayload } from '../auth/interfaces/user-payload.interface'; // Usar 'import type'
+import { PaginationResponseDto } from '../common/dto/pagination-response.dto';
 
 @Controller('products')
 @UseGuards(AuthGuard('jwt'))
@@ -25,12 +26,13 @@ export class ProductsController {
   }
 
   @Get()
-  async findAll(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-  ) {
-    return await this.productsService.findAll({ page, limit });
-  }
+async findAll(
+  @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+  @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+): Promise<PaginationResponseDto<ProductEntity>> { // Atualizar tipo de retorno
+  limit = limit > 100 ? 100 : limit;
+  return await this.productsService.findAll({ page, limit });
+}
 
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<ProductEntity> {
